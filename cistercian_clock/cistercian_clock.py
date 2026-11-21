@@ -3,9 +3,9 @@
 cistercian_clock.py - Visualizes Cistercian numerals on an 8x8 LED matrix.
 
 Usage:
-  ./helpers/cistercian_clock.py [HH MM]
-  ./helpers/cistercian_clock.py [HH:MM]
-  ./helpers/cistercian_clock.py          (uses current local time)
+  ./cistercian_clock/cistercian_clock.py [HH MM]
+  ./cistercian_clock/cistercian_clock.py [HH:MM]
+  ./cistercian_clock/cistercian_clock.py          (uses current local time)
 
 Options:
   --dow 0..6    Weekday override (0=Mon, 1=Tue, ..., 6=Sun)

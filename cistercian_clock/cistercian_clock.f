@@ -138,6 +138,7 @@ VARIABLE CLOCK-TICKS
 \ --- Main Clock Loop ---
 \ Live clock: checks RTC every ~2.5s directly against hardware (zero drift, zero flash)
 : CIST-CLOCK ( -- )
+  BEGIN KEY? WHILE KEY DROP REPEAT
   CIST-UPDATE
   0 CLOCK-TICKS !
   BEGIN
