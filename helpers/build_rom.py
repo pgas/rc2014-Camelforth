@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-build_rom.py - Builds a 16KB CamelForth ROM with RTC, matrix8x8, and cistercian_clock
-preloaded in ROM and auto-started on boot, plus a 128KB RC2014 Mini II image.
+build_rom.py - Builds a 16KB CamelForth ROM with pre-compiled Forth files
+copied to RAM in ~1.5ms on boot, plus a 128KB RC2014 Mini II image.
 """
 
 import argparse
@@ -11,15 +11,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "helpers"))
-from strip_comments import strip_forth_comments
-
-MINI2_DIR = ROOT.parent / "mini2"
-DEFAULT_FACTORY_HEX = MINI2_DIR / "ROMs" / "Factory" / "Mini II v1.2.HEX"
-DEFAULT_FILES = [
-    ROOT / "RTC" / "RTC.f",
-    ROOT / "matrix8x8" / "matrix8x8.f",
-    ROOT / "cistercian_clock" / "cistercian_clock.f",
-]
+from cross_compile import (
+    DEFAULT_FACTORY_HEX,
+    DICT_ORG,
+    UINIT_PFA,
+    cross_compile_files,
+)
 
 TOTAL_SIZE = 131072
 BANK_SIZE = 16384
@@ -84,61 +81,58 @@ def insert_bank(base_data, payload, bank):
     return out
 
 
-def build_forth_payload(forth_files, start_word="CIST-CLOCK"):
-    tokens = []
-    for fp in forth_files:
-        raw = Path(fp).read_text(encoding="utf-8")
-        cleaned = strip_forth_comments(raw, keep_blank_lines=False)
-        for line in cleaned.splitlines():
-            line = line.strip()
-            if line:
-                tokens.append(line)
-    if start_word:
-        tokens.append(start_word)
-    payload = " ".join(tokens).encode("ascii")
-    if len(payload) > 0x3FD0 - SRC_ADDR:
-        raise ValueError(f"Forth source ({len(payload)} bytes) exceeds free ROM space")
-    return payload
-
-
-def build_16k_rom(base_forth_bytes, forth_payload):
+def build_16k_rom(base_forth_bytes, cc, start_word=""):
     if len(base_forth_bytes) != 8192:
         raise ValueError(f"Expected 8192-byte base CamelForth ROM, got {len(base_forth_bytes)}")
 
+    ram_image = bytes(cc.ram)
+    if len(ram_image) > 0x3FD0 - SRC_ADDR:
+        raise ValueError(f"Compiled dictionary ({len(ram_image)} bytes) exceeds free ROM space")
+
     rom = bytearray(base_forth_bytes) + bytearray([0xFF] * 8192)
     rom[0x3FD0:0x4000] = rom[0x1FD0:0x2000]
-    rom[SRC_ADDR:SRC_ADDR + len(forth_payload)] = forth_payload
+    rom[SRC_ADDR:SRC_ADDR + len(ram_image)] = ram_image
+
+    # Patch UINIT in ROM so COLD initializes DP and LATEST to the pre-compiled dictionary
+    struct.pack_into("<H", rom, UINIT_PFA + 0x08, cc.here)
+    struct.pack_into("<H", rom, UINIT_PFA + 0x0E, cc.latest)
 
     if struct.unpack_from("<H", rom, COLD_ABORT_XT)[0] != 0x1375:
         raise ValueError("Unexpected COLD layout in base CamelForth ROM")
     struct.pack_into("<H", rom, COLD_ABORT_XT, HOOK_ADDR)
 
     # Colon definition at HOOK_ADDR:
-    # S0 SP! L0 LP ! R0 RP! 0 STATE ! <SRC_ADDR> <len> INTERPRET ABORT
-    hook = b"\xcd\xa8\x02" + struct.pack(
-        "<HHHHHHHHHHHHHHHHH",
+    # S0 SP! L0 LP ! R0 RP! <SRC_ADDR> <DICT_ORG> <len> CMOVE [start_word] ABORT
+    words = [
         0x0AD7, 0x0480,                  # S0 SP!
         0x0AEE, 0x0ACC, 0x04B4,          # L0 LP !
         0x0AF9, 0x04A4,                  # R0 RP!
-        0x028B, 0x0000, 0x0A8C, 0x04B4,  # 0 STATE !
-        0x028B, SRC_ADDR,                # LIT SRC_ADDR
-        0x028B, len(forth_payload),      # LIT len
-        0x129C,                          # INTERPRET
-        0x1375,                          # ABORT
-    )
+        0x028B, SRC_ADDR,                # LIT SRC_ADDR (0x2000)
+        0x028B, DICT_ORG,                # LIT DICT_ORG (0x8800)
+        0x028B, len(ram_image),          # LIT len
+        0x0884,                          # CMOVE
+    ]
+    if start_word:
+        if start_word not in cc.words:
+            raise ValueError(f"Start word '{start_word}' not found in compiled dictionary")
+        words.append(cc.xt(start_word))
+    words.append(0x1375)                 # ABORT
+
+    hook = b"\xcd\xa8\x02" + struct.pack(f"<{len(words)}H", *words)
     rom[HOOK_ADDR:HOOK_ADDR + len(hook)] = hook
     return bytes(rom)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Build CamelForth + Cistercian Clock ROM image")
+    parser = argparse.ArgumentParser(description="Build pre-compiled CamelForth ROM image")
+    parser.add_argument("files", nargs="+", type=Path, help="Forth source files to pre-compile into ROM")
     parser.add_argument("--base-forth", type=Path, help="Optional 8KB CamelForth binary (default: extracted from factory HEX Bank 4)")
     parser.add_argument("--factory-hex", type=Path, default=DEFAULT_FACTORY_HEX, help="Mini II Factory Intel HEX image (default: %(default)s)")
     parser.add_argument("--bank", type=int, default=4, help="Target 16KB bank in Mini II 128KB ROM (0-7, default: 4 [CamelForth slot])")
-    parser.add_argument("--start-word", default="CIST-CLOCK", help="Word to auto-run at boot (default: CIST-CLOCK, use '' for none)")
-    parser.add_argument("--out-rom", type=Path, default=ROOT / "build" / "camelforth_clock.rom", help="Output 16KB ROM payload")
-    parser.add_argument("--out-bin", type=Path, default=ROOT / "build" / "Mini_II_camelforth_clock.bin", help="Output 128KB Mini II .bin")
-    parser.add_argument("--out-hex", type=Path, default=ROOT / "build" / "Mini_II_camelforth_clock.hex", help="Output 128KB Mini II .hex")
+    parser.add_argument("--start-word", default="", help="Word to auto-run at boot (default: none)")
+    parser.add_argument("--out-rom", type=Path, default=ROOT / "build" / "camelforth.rom", help="Output 16KB ROM payload")
+    parser.add_argument("--out-bin", type=Path, default=ROOT / "build" / "Mini_II_camelforth.bin", help="Output 128KB Mini II .bin")
+    parser.add_argument("--out-hex", type=Path, default=ROOT / "build" / "Mini_II_camelforth.hex", help="Output 128KB Mini II .hex")
     args = parser.parse_args()
 
     factory_data = None
@@ -152,12 +146,15 @@ def main():
     else:
         sys.exit(f"Neither --base-forth nor --factory-hex ({args.factory_hex}) found.")
 
-    payload = build_forth_payload(DEFAULT_FILES, start_word=args.start_word)
-    rom_16k = build_16k_rom(base_forth, payload)
+    cc = cross_compile_files(args.files, rom_8k=base_forth)
+    rom_16k = build_16k_rom(base_forth, cc, start_word=args.start_word)
 
     args.out_rom.parent.mkdir(parents=True, exist_ok=True)
     args.out_rom.write_bytes(rom_16k)
-    print(f"Wrote 16KB CamelForth payload: {args.out_rom} ({len(payload)} bytes Forth source at 0x{SRC_ADDR:04X})")
+    print(
+        f"Wrote 16KB CamelForth payload: {args.out_rom} "
+        f"({len(cc.ram)} bytes pre-compiled dictionary at 0x{SRC_ADDR:04X} -> 0x{DICT_ORG:04X})"
+    )
 
     if factory_data is not None:
         stitched = insert_bank(factory_data, rom_16k, args.bank)
