@@ -35,6 +35,7 @@ Requires `RTC.f` and `matrix8x8.f`:
 - `CIST-CLOCK` `( -- )` - Runs the live clock continuously from the DS1302 RTC. Press Enter 3 times in the serial terminal to exit.
 - `CIST-UPDATE` `( -- )` - Reads current time, date (computes weekday), and DST flag from RTC and renders to `DISPLAY-BUFFER`.
 - `CIST-SET` `( hh mm dow dst -- )` - Renders arbitrary time and status into `DISPLAY-BUFFER`.
+- `CIST-ROTATE` `( -- addr )` - Flag controlling 90° counterclockwise display rotation (default `1`; set `0 CIST-ROTATE !` for vertical stem).
 - `.CIST` `( -- )` - ASCII art visualizer of current display buffer in the serial terminal.
 
 ## Python Visualizer

@@ -93,12 +93,25 @@ CREATE CIST-MONTHS 6 C, 2 C, 1 C, 4 C, 6 C, 2 C, 4 C, 0 C, 3 C, 5 C, 1 C, 3 C,
   LOOP 2DROP ;
 
 \ Render specific time & status to DISPLAY-BUFFER
+VARIABLE CIST-ROTATE
+1 CIST-ROTATE !
+
+: CIST-ROT-CCW ( -- )
+  8 0 DO
+    0 8 0 DO
+      I DISPLAY-BUFFER + C@ J LTWOS + C@ AND
+      IF I LTWOS + C@ OR THEN
+    LOOP
+  LOOP
+  8 0 DO I DISPLAY-BUFFER + C! LOOP ;
+
 : CIST-SET ( hh mm dow dst -- )
   CIST-INIT
   SET-DST
   SET-DOW
   10 /MOD SWAP CIST-WING-TOP
-  10 /MOD SWAP CIST-WING-BOT ;
+  10 /MOD SWAP CIST-WING-BOT
+  CIST-ROTATE @ IF CIST-ROT-CCW THEN ;
 
 \ --- State Variables ---
 VARIABLE CUR-DOW
