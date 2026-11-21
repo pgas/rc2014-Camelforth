@@ -3,8 +3,8 @@
 \ Exits when any key is pressed in the serial terminal.
 \
 \ Requires matrix8x8.f to be loaded first:
-\   ./spool.py minified/matrix8x8.f
-\   ./spool.py minified/cross.f
+\   ./helpers/spool.py minified/matrix8x8.f
+\   ./helpers/spool.py minified/cross.f
 
 DECIMAL
 

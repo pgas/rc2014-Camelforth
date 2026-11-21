@@ -165,6 +165,8 @@ def main():
 
     args = parser.parse_args()
     root_dir = Path.cwd()
+    if not (root_dir / "matrix8x8").exists() and (Path(__file__).resolve().parent.parent / "matrix8x8").exists():
+        root_dir = Path(__file__).resolve().parent.parent
     out_dir = (root_dir / args.out_dir).resolve()
 
     if args.files:

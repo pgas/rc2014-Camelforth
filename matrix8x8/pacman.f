@@ -2,8 +2,8 @@
 \ Demonstrates static display, in-place chomping, and horizontal animation.
 \
 \ Requires matrix8x8.f to be loaded first:
-\   ./spool.py minified/matrix8x8.f
-\   ./spool.py minified/pacman.f
+\   ./helpers/spool.py minified/matrix8x8.f
+\   ./helpers/spool.py minified/pacman.f
 \
 \ Provided Words:
 \   PACMAN-STATIC ( -- )      - Displays open-mouthed Pacman centered (~2 sec)
