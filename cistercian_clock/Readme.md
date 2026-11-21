@@ -32,7 +32,7 @@ Requires `RTC.f` and `matrix8x8.f`:
 
 ## Words
 
-- `CIST-CLOCK` `( -- )` - Runs the live clock continuously from the DS1302 RTC. Press any key in the serial terminal to exit.
+- `CIST-CLOCK` `( -- )` - Runs the live clock continuously from the DS1302 RTC. Press Enter 3 times in the serial terminal to exit.
 - `CIST-UPDATE` `( -- )` - Reads current time, date (computes weekday), and DST flag from RTC and renders to `DISPLAY-BUFFER`.
 - `CIST-SET` `( hh mm dow dst -- )` - Renders arbitrary time and status into `DISPLAY-BUFFER`.
 - `.CIST` `( -- )` - ASCII art visualizer of current display buffer in the serial terminal.
