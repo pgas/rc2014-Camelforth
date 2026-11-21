@@ -16,18 +16,18 @@ The clock encodes 24-hour time (`HH:MM`) around a central vertical stem:
   * Rows 0-6: Weekday (Row 0 = Mon, Row 1 = Tue, ..., Row 6 = Sun)
   * Row 7: Daylight Saving Time (lit when active)
 
-## Loading
+## Loading over Serial
 
 Requires `RTC.f` and `matrix8x8.f`:
 
 ```bash
-./spool.py minified/RTC.f
-./spool.py minified/matrix8x8.f
-./spool.py minified/cistercian_clock.f
-./helpers/spool.py minified/RTC.f
-./helpers/spool.py minified/matrix8x8.f
-./helpers/spool.py minified/cistercian_clock.f
-./helpers/spool.py minified/RTC.f minified/matrix8x8.f minified/cistercian_clock.f
+./helpers/spool.py RTC/RTC.f matrix8x8/matrix8x8.f cistercian_clock/cistercian_clock.f
+```
+
+## Building a Bootable ROM & `HEXLOAD` Image
+
+```bash
+./cistercian_clock/build_clock_rom.sh
 ```
 
 ## Words
@@ -35,9 +35,7 @@ Requires `RTC.f` and `matrix8x8.f`:
 - `CIST-CLOCK` `( -- )` - Runs the live clock continuously from the DS1302 RTC. Press any key in the serial terminal to exit.
 - `CIST-UPDATE` `( -- )` - Reads current time, date (computes weekday), and DST flag from RTC and renders to `DISPLAY-BUFFER`.
 - `CIST-SET` `( hh mm dow dst -- )` - Renders arbitrary time and status into `DISPLAY-BUFFER`.
-- `CIST-SHOW` `( hh mm dow dst -- )` - Renders arbitrary time and refreshes matrix until a key is pressed.
 - `.CIST` `( -- )` - ASCII art visualizer of current display buffer in the serial terminal.
-- `CIST-TEST` `( -- )` - Runs built-in self-test validating the 22:14 Tuesday DST pattern against the specification.
 
 ## Python Visualizer
 
@@ -45,11 +43,11 @@ You can test and visualize any timestamp directly from your workstation:
 
 ```bash
 # Current system time
-./helpers/cistercian_clock.py
+./cistercian_clock/cistercian_clock.py
 
 # Specific time
-./helpers/cistercian_clock.py 12 26
-./helpers/cistercian_clock.py 22:14 --dow 1 --dst 1
+./cistercian_clock/cistercian_clock.py 12 26
+./cistercian_clock/cistercian_clock.py 22:14 --dow 1 --dst 1
 ```
 
 ## Acknowledgments & Inspiration
