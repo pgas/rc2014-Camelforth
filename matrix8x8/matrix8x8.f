@@ -81,7 +81,7 @@ CREATE LTWOS 128 C, 64 C, 32 C, 16 C, 8 C, 4 C, 2 C, 1 C,
   7 SWAP -
   DISPLAY-BUFFER + C@
   SWAP LTWOS + C@
-  AND 0<> ;
+  AND 0= INVERT ;
 
 : XY-TOGGLE ( col row -- )
   7 SWAP -
